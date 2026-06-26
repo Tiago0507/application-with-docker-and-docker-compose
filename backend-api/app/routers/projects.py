@@ -50,7 +50,7 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
         data = ProjectResponse.model_validate(
             {**project.__dict__, "task_count": task_count or 0, "completed_tasks": completed_tasks or 0}
         )
-        projects.append(data.model_dump())
+        projects.append(data.model_dump(mode='json'))
 
     await cache_set("projects:all", projects, ttl=30)
     return projects

@@ -50,6 +50,12 @@ services:
       - "${FRONTEND_PORT:-5173}:5173"
     environment:
       NODE_ENV: development
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f vite || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   nginx:
     volumes:

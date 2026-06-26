@@ -134,6 +134,18 @@ Only port 8084 is exposed. No pgAdmin, no direct database access, passwords load
 | Vite | 5173 | http://localhost:5173 |
 | PostgreSQL | 5432 | — |
 | Redis | 6379 | — |
-| pgAdmin | 5050 | http://localhost:5050 |
+| pgAdmin | 5050 | http://localhost:5050 (credentials in `.env`) |
+
+To connect pgAdmin to the database, go to **Add New Server** and use:
+
+| Field | Value |
+|---|---|
+| Host | `postgres` |
+| Port | `5432` |
+| Database | `devboard` |
+| Username | `POSTGRES_USER` from `.env` |
+| Password | `POSTGRES_PASSWORD` from `.env` |
+
+The host must be `postgres` (the Docker service name), not `localhost`.
 
 If any container crashes at 3am, that is a Docker problem, not a you problem. Probably.
