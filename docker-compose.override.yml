@@ -1,0 +1,81 @@
+services:
+
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+  backend-api:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      # Bind mount: changes in ./backend-api/app are reflected instantly inside the container
+      - ./backend-api/app:/app/app
+      # tmpfs: fast in-memory storage for temporary files; wiped on container stop
+      - type: tmpfs
+        target: /tmp/api_scratch
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      DEBUG: "true"
+
+  backend-metrics:
+    build:
+      # Reuse the builder stage which already has devDependencies installed
+      target: builder
+    command: npm run start:dev
+    volumes:
+      - ./backend-metrics/src:/build/src
+      # Anonymous volume: keeps the container's node_modules intact,
+      # preventing the host directory (possibly built for a different OS) from overwriting it
+      - /build/node_modules
+    ports:
+      - "${METRICS_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: development
+
+  frontend:
+    build:
+      target: builder
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend/src:/build/src
+      - ./frontend/index.html:/build/index.html
+      - ./frontend/tailwind.config.js:/build/tailwind.config.js
+      - ./frontend/postcss.config.js:/build/postcss.config.js
+      - /build/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      NODE_ENV: development
+
+  nginx:
+    volumes:
+      # Override the base volume: mount dev config instead of production config
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${NGINX_PORT:-8084}:80"
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_LISTEN_PORT:      5050
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:5050"
+    networks:
+      - backend_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+volumes:
+  pgadmin_data:
+    labels:
+      com.devboard.description: "pgAdmin configuration and session data"

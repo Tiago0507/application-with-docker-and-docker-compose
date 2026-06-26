@@ -1,0 +1,25 @@
+# Environment variables (contain real credentials)
+.env
+.env.local
+.env.*.local
+
+# Docker secrets (contain plaintext passwords)
+secrets/*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
