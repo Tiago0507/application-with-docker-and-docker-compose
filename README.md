@@ -4,12 +4,12 @@ DevBoard is a project and task management dashboard. Its real purpose is to serv
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
-| Backend API | FastAPI, SQLAlchemy (async), PostgreSQL, Redis |
-| Metrics Service | NestJS, TypeORM, PostgreSQL |
-| Reverse Proxy | Nginx |
+| Layer           | Technology                                     |
+| --------------- | ---------------------------------------------- |
+| Frontend        | React 18, TypeScript, Vite, Tailwind CSS       |
+| Backend API     | FastAPI, SQLAlchemy (async), PostgreSQL, Redis |
+| Metrics Service | NestJS, TypeORM, PostgreSQL                    |
+| Reverse Proxy   | Nginx                                          |
 
 ## Architecture
 
@@ -88,20 +88,52 @@ All three Dockerfiles accept `APP_VERSION` and `BUILD_DATE` as build arguments p
 
 ## Running
 
-**Development:** `docker compose up --build` — Compose auto-merges the base and override files. Hot-reload is active on all services. App at `http://localhost:8084`, pgAdmin at `http://localhost:5050`.
+### Prerequisites
 
-**Production:** `docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d` — only port 8084 is exposed.
+- Docker and Docker Compose installed
+
+### Setup
+
+```bash
+cp .env.example .env
+```
+
+The default values work out of the box for local development. Adjust any port that conflicts with a service already running on your machine.
+
+### Development
+
+```bash
+docker compose up --build
+```
+
+Compose automatically merges `docker-compose.yml` and `docker-compose.override.yml`. All services start with hot-reload enabled. The first build takes a few minutes; subsequent builds are faster thanks to layer caching.
+
+```bash
+docker compose logs -f
+```
+
+```bash
+docker compose ps
+```
+
+### Production
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+Only port 8084 is exposed. No pgAdmin, no direct database access, passwords loaded from secret files.
 
 ## Ports (Development)
 
-| Service | Port |
-|---|---|
-| Nginx | 8084 |
-| FastAPI | 8000 |
-| NestJS | 3001 |
-| Vite | 5173 |
-| PostgreSQL | 5432 |
-| Redis | 6379 |
-| pgAdmin | 5050 |
+| Service | Port | URL |
+|---|---|---|
+| Nginx | 8084 | http://localhost:8084 |
+| FastAPI | 8000 | http://localhost:8000/docs |
+| NestJS | 3001 | http://localhost:3001/health |
+| Vite | 5173 | http://localhost:5173 |
+| PostgreSQL | 5432 | — |
+| Redis | 6379 | — |
+| pgAdmin | 5050 | http://localhost:5050 |
 
 If any container crashes at 3am, that is a Docker problem, not a you problem. Probably.
