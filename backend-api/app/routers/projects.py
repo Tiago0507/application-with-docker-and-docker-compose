@@ -2,6 +2,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.redis_client import cache_get, cache_set, cache_delete_pattern
 from app.core.config import get_settings
@@ -75,25 +76,24 @@ async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
     if cached:
         return cached
 
-    result = await db.execute(select(Project).where(Project.id == project_id))
+    result = await db.execute(
+        select(Project)
+        .options(selectinload(Project.tasks))
+        .where(Project.id == project_id)
+    )
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    task_count = await db.scalar(
-        select(func.count(Task.id)).where(Task.project_id == project_id)
-    )
-    completed = await db.scalar(
-        select(func.count(Task.id)).where(
-            Task.project_id == project_id, Task.status == TaskStatus.done
-        )
-    )
+    task_count = len(project.tasks)
+    completed = sum(1 for t in project.tasks if t.status == TaskStatus.done)
 
+    project_data = {k: v for k, v in project.__dict__.items() if not k.startswith("_")}
     data = ProjectDetailResponse.model_validate(
         {
-            **project.__dict__,
-            "task_count": task_count or 0,
-            "completed_tasks": completed or 0,
+            **project_data,
+            "task_count": task_count,
+            "completed_tasks": completed,
             "tasks": [
                 {"id": t.id, "title": t.title, "status": t.status, "priority": t.priority}
                 for t in project.tasks
@@ -101,7 +101,7 @@ async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
         }
     )
 
-    dumped = data.model_dump()
+    dumped = data.model_dump(mode='json')
     await cache_set(f"projects:{project_id}", dumped, ttl=30)
     return dumped
 
