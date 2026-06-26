@@ -1,7 +1,7 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from app.core.database import get_db
 from app.core.redis_client import cache_get, cache_set, cache_delete_pattern
 from app.core.config import get_settings
@@ -35,7 +35,7 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
             Project,
             func.count(Task.id).label("task_count"),
             func.sum(
-                func.cast(Task.status == TaskStatus.done, type_=func.Integer() if False else None)
+                case((Task.status == TaskStatus.done, 1), else_=0)
             ).label("completed_tasks"),
         )
         .outerjoin(Task, Task.project_id == Project.id)
@@ -46,10 +46,10 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 
     projects = []
     for row in rows:
-        project = row[0]
-        data = ProjectResponse.model_validate(project)
-        data.task_count = row[1] or 0
-        data.completed_tasks = row[2] or 0
+        project, task_count, completed_tasks = row
+        data = ProjectResponse.model_validate(
+            {**project.__dict__, "task_count": task_count or 0, "completed_tasks": completed_tasks or 0}
+        )
         projects.append(data.model_dump())
 
     await cache_set("projects:all", projects, ttl=30)
@@ -89,13 +89,17 @@ async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
         )
     )
 
-    data = ProjectDetailResponse.model_validate(project)
-    data.task_count = task_count or 0
-    data.completed_tasks = completed or 0
-    data.tasks = [
-        {"id": t.id, "title": t.title, "status": t.status, "priority": t.priority}
-        for t in project.tasks
-    ]
+    data = ProjectDetailResponse.model_validate(
+        {
+            **project.__dict__,
+            "task_count": task_count or 0,
+            "completed_tasks": completed or 0,
+            "tasks": [
+                {"id": t.id, "title": t.title, "status": t.status, "priority": t.priority}
+                for t in project.tasks
+            ],
+        }
+    )
 
     dumped = data.model_dump()
     await cache_set(f"projects:{project_id}", dumped, ttl=30)
