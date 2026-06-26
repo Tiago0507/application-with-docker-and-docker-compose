@@ -103,7 +103,7 @@ The default values work out of the box for local development. Adjust any port th
 ### Development
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
 Compose automatically merges `docker-compose.yml` and `docker-compose.override.yml`. All services start with hot-reload enabled. The first build takes a few minutes; subsequent builds are faster thanks to layer caching.
